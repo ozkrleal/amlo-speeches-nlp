@@ -51,6 +51,24 @@ getamloscripts <- function(){
 
 allscripts <- getamloscripts()
 
-tibblescript %>%
+firstscript <- allscripts$`02/14` %>%
   unnest_tokens(word, text)
 
+custom_stop_words <- tibble(word = tm::stopwords("spanish"))
+
+tidy_script <- firstscript %>% anti_join(custom_stop_words)
+
+tidy_script %>%
+  count(word, sort = TRUE) 
+
+
+library(ggplot2)
+
+tidy_script %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 10) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
