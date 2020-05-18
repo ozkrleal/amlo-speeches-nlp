@@ -51,7 +51,13 @@ getamloscripts <- function(){
 
 allscripts <- getamloscripts()
 
-firstscript <- allscripts$`02/14` %>%
+for(i in names(allscripts)) {
+  print(allscripts[[i]])
+}
+
+
+
+firstscript <- allscripts$`03/13` %>%
   unnest_tokens(word, text)
 
 custom_stop_words <- tibble(word = tm::stopwords("spanish"))
