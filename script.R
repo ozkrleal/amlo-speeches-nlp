@@ -13,6 +13,10 @@ getamloscripts <- function(){
 
   while (theDate <= end)
   {
+    if(as.character(theDate) == "2020-02-21"){
+      theDate <- theDate + 3    
+    }
+    
     my_url <- print(paste0('https://lopezobrador.org.mx/2020/', 
                  format(theDate, "%m/%d"), 
                  '/version-estenografica-de-la-conferencia-de-prensa-matutina-del-presidente-andres-manuel-lopez-obrador-',
@@ -30,11 +34,12 @@ getamloscripts <- function(){
   
     list_tibbles[[as.character(format(theDate, "%m/%d"))]] <- tibblescript
 
-    #JUMP away from the weekends
-    ## still bugging
-    if(as.character(theDate) == "2020-02-21"){
-      theDate <- theDate + 4   
-    } else if(weekdays(theDate) == "Friday"){
+    if(as.character(theDate) == "2020-04-03") {
+      theDate <- theDate + 1
+    } else if(as.character(theDate) == "2020-04-04") {
+      theDate <- theDate + 2
+    }
+      else if(weekdays(theDate) == "Friday" ){
       theDate <- theDate + 3
     } else {
       theDate <- theDate + 1       
@@ -45,7 +50,6 @@ getamloscripts <- function(){
 }
 
 allscripts <- getamloscripts()
-
 
 tibblescript %>%
   unnest_tokens(word, text)
