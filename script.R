@@ -51,16 +51,22 @@ getamloscripts <- function(){
 
 allscripts <- getamloscripts()
 
+custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente')), tibble(word = tm::stopwords("spanish")))
+
+tidy_list <- list()
 for(i in names(allscripts)) {
-  print(allscripts[[i]])
+  tidy_list[[i]] <- allscripts[[i]] %>%
+    unnest_tokens(word, text) %>% anti_join(custom_stop_words) 
 }
 
+count_list <- list()
+for(i in names(tidy_list)){
+  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE)
+}
 
-
-firstscript <- allscripts$`03/13` %>%
+firstscript <- allscripts$`02/14` %>%
   unnest_tokens(word, text)
 
-custom_stop_words <- tibble(word = tm::stopwords("spanish"))
 
 tidy_script <- firstscript %>% anti_join(custom_stop_words)
 
