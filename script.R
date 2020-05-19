@@ -64,6 +64,19 @@ for(i in names(tidy_list)){
   count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE)
 }
 
+counted_dated <- list()
+for(i in names(count_list)){
+  counted_dated[[i]] <- tibble(word = count_list[[i]]$word, n = count_list[[i]]$n, date = c(i))
+}
+
+binded <- counted_dated %>% bind_rows
+
+binded$date <- as.factor(binded$date)
+
+
+
+
+
 firstscript <- allscripts$`02/14` %>%
   unnest_tokens(word, text)
 
