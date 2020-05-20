@@ -2,11 +2,11 @@ library(rvest)
 library(dplyr)
 library(tidytext)
 library(ggplot2)
-library(gganimate) 
+library(gganimate)   
+library(data.table)
 
-#first counter is 02/14    257  + 60 days = april 15 2020
 start <- as.Date("14/02/20","%d/%m/%y")
-end   <- as.Date("15/04/20","%d/%m/%y")
+end   <- as.Date("15/05/20","%d/%m/%y")
 
 getamloscripts <- function(){
   theDate <- start
@@ -52,7 +52,13 @@ getamloscripts <- function(){
 
 allscripts <- getamloscripts()
 
-custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 'si', 'entonces', 'pregunta', 'interlocutora')), tibble(word = tm::stopwords("spanish")))
+#saveRDS(allscripts, file = "amlo_scripts_scraped.rds")
+allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
+
+
+custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va')), 
+                               tibble(word = tm::stopwords("spanish")))
 
 tidy_list <- list()
 for(i in names(allscripts)) {
@@ -74,16 +80,17 @@ binded <- counted_dated %>% bind_rows
 
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
-
+binded$datenumeric <- as.numeric(binded$datenumeric)
 
 binded %>%  
   # for each year we assign a rank
   group_by(datenumeric) %>%  
   arrange(datenumeric, -n) %>%  
   # assign ranking
-  mutate(rank = 1:n()) %>%  
-  filter(rank <= 20) ->  
+  mutate(rank = row_number()) %>%  
+  ungroup() ->  
   ranked_by_date
+
 
 my_theme <- theme_classic(base_family = "") +
   theme(axis.text.y = element_blank()) +
@@ -93,24 +100,25 @@ my_theme <- theme_classic(base_family = "") +
   theme(plot.background = element_rect(fill = "gainsboro")) +
   theme(panel.background = element_rect(fill = "gainsboro"))
 
+
 ranked_by_date %>%  
   ggplot() +  
   aes(xmin = 0 ,  
       xmax = n) +  
   aes(ymin = rank - .45,  
       ymax = rank + .45,  
-      y = rank) +  
-  facet_wrap(~ datenumeric)  +  
+      y = rank) +   
   scale_x_continuous(  
     limits = c(-120, 100),  
-    breaks = c(0, 5, 10, 20)) +
+    breaks = c(0, 10, 20, 30)) +
   geom_rect(alpha = .7) +
   scale_fill_viridis_d(option = "magma",  
                        direction = -1) +  
   geom_text(col = "gray13",  
-            hjust = "right",  
+            hjust = "right",
+            size = 9,
             aes(label = word),  
-            x = -50) +  
+            x = -35) +  
   scale_y_reverse() +  
   labs(fill = NULL) +  
   labs(x = 'n') +  
@@ -121,24 +129,18 @@ ranked_by_date %>%
 a <- my_plot +  
   facet_null() +  
   scale_x_continuous(  
-    limits = c(-120, 100),  
-    breaks = c(0, 5, 10, 20)) +  
-  geom_text(x = 1000 , y = -10,  
+    limits = c(-110, 100),  
+    breaks = c(0, 10, 20, 30)) +  
+  geom_text(x = 60 , y = -10,  
             family = "",  
-            aes(label = as.character(datenumeric)),  
-            size = 30, col = "red") +  
-  gganimate::transition_time(as.double(datenumeric))
+            aes(label = as.character(date)),  
+            size = 25, col = "black") +  
+  exit_disappear() +
+  gganimate::transition_states(datenumeric, transition_length = 50, state_length = 60)
 
-animate(a, duration = 100, fps = 30)
-anim_save("racewords-day.gif")
+animate(a, fps = 2)
 
-firstscript <- allscripts$`02/14` %>%
-  unnest_tokens(word, text)
-
-tidy_script <- firstscript %>% anti_join(custom_stop_words)
-
-tidy_script %>%
-  count(word, sort = TRUE) 
+anim_save("racewords-day.gif", a)
 
 tidy_script %>%
   count(word, sort = TRUE) %>%
