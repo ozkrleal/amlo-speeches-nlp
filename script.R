@@ -1,6 +1,8 @@
 library(rvest)
 library(dplyr)
 library(tidytext)
+library(ggplot2)
+library(gganimate) 
 
 #first counter is 02/14    257  + 60 days = april 15 2020
 start <- as.Date("14/02/20","%d/%m/%y")
@@ -61,7 +63,7 @@ for(i in names(allscripts)) {
 
 count_list <- list()
 for(i in names(tidy_list)){
-  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE)
+  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(20)
 }
 
 counted_dated <- list()
@@ -71,23 +73,70 @@ for(i in names(count_list)){
 
 binded <- counted_dated %>% bind_rows
 
+binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
 
 
+binded %>%  
+  # for each year we assign a rank
+  group_by(date) %>%  
+  arrange(date, -n) %>%  
+  # assign ranking
+  mutate(rank = 1:n()) %>%  
+  filter(rank <= 20) ->  
+  ranked_by_date
 
+my_theme <- theme_classic(base_family = "Times") +
+  theme(axis.text.y = element_blank()) +
+  theme(axis.ticks.y = element_blank()) +
+  theme(axis.line.y = element_blank()) +
+  theme(legend.background = element_rect(fill = "gainsboro")) +
+  theme(plot.background = element_rect(fill = "gainsboro")) +
+  theme(panel.background = element_rect(fill = "gainsboro"))
 
+ranked_by_date %>%  
+  ggplot() +  
+  aes(xmin = 0 ,  
+      xmax = n) +  
+  aes(ymin = rank - .45,  
+      ymax = rank + .45,  
+      y = rank) +  
+  facet_wrap(~ date) +  
+  geom_rect(alpha = .7) +
+  scale_fill_viridis_d(option = "magma",  
+                       direction = -1) +  
+  geom_text(col = "gray13",  
+            hjust = "right",  
+            aes(label = word),  
+            x = -50) +  
+  scale_y_reverse() +  
+  labs(fill = NULL) +  
+  labs(x = 'n') +  
+  labs(y = "") +  
+  my_theme ->  
+  my_plot
+
+a <- my_plot +  
+  facet_null() +  
+  scale_x_continuous(  
+    limits = c(-80, 100),  
+    breaks = c(0, 5, 10, 20)) +  
+  geom_text(x = 1000 , y = -10,  
+            family = "Times",  
+            aes(label = as.character(date)),  
+            size = 30, col = "red") +  
+  gganimate::transition_time(as.double(binded$datenumeric))
+
+animate(a, duration = 100, fps = 30)
+anim_save("racewords-day.gif")
 
 firstscript <- allscripts$`02/14` %>%
   unnest_tokens(word, text)
-
 
 tidy_script <- firstscript %>% anti_join(custom_stop_words)
 
 tidy_script %>%
   count(word, sort = TRUE) 
-
-
-library(ggplot2)
 
 tidy_script %>%
   count(word, sort = TRUE) %>%
