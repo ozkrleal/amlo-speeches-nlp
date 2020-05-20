@@ -52,7 +52,7 @@ getamloscripts <- function(){
 
 allscripts <- getamloscripts()
 
-custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente')), tibble(word = tm::stopwords("spanish")))
+custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 'si', 'entonces', 'pregunta', 'interlocutora')), tibble(word = tm::stopwords("spanish")))
 
 tidy_list <- list()
 for(i in names(allscripts)) {
@@ -62,7 +62,7 @@ for(i in names(allscripts)) {
 
 count_list <- list()
 for(i in names(tidy_list)){
-  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(15)
+  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(10)
 }
 
 counted_dated <- list()
@@ -78,14 +78,14 @@ binded$date <- as.factor(binded$date)
 
 binded %>%  
   # for each year we assign a rank
-  group_by(date) %>%  
-  arrange(date, -n) %>%  
+  group_by(datenumeric) %>%  
+  arrange(datenumeric, -n) %>%  
   # assign ranking
   mutate(rank = 1:n()) %>%  
   filter(rank <= 20) ->  
   ranked_by_date
 
-my_theme <- theme_classic(base_family = "Times") +
+my_theme <- theme_classic(base_family = "") +
   theme(axis.text.y = element_blank()) +
   theme(axis.ticks.y = element_blank()) +
   theme(axis.line.y = element_blank()) +
@@ -100,7 +100,7 @@ ranked_by_date %>%
   aes(ymin = rank - .45,  
       ymax = rank + .45,  
       y = rank) +  
-  facet_wrap(~ date)  +  
+  facet_wrap(~ datenumeric)  +  
   scale_x_continuous(  
     limits = c(-120, 100),  
     breaks = c(0, 5, 10, 20)) +
@@ -124,10 +124,10 @@ a <- my_plot +
     limits = c(-120, 100),  
     breaks = c(0, 5, 10, 20)) +  
   geom_text(x = 1000 , y = -10,  
-            family = "Times",  
-            aes(label = as.character(date)),  
+            family = "",  
+            aes(label = as.character(datenumeric)),  
             size = 30, col = "red") +  
-  gganimate::transition_time(as.double(binded$datenumeric))
+  gganimate::transition_time(as.double(datenumeric))
 
 animate(a, duration = 100, fps = 30)
 anim_save("racewords-day.gif")
