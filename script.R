@@ -40,8 +40,7 @@ getamloscripts <- function(){
       theDate <- theDate + 1
     } else if(as.character(theDate) == "2020-04-04") {
       theDate <- theDate + 2
-    }
-      else if(weekdays(theDate) == "Friday" ){
+    } else if(weekdays(theDate) == "Friday" ){
       theDate <- theDate + 3
     } else {
       theDate <- theDate + 1       
@@ -63,7 +62,7 @@ for(i in names(allscripts)) {
 
 count_list <- list()
 for(i in names(tidy_list)){
-  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(20)
+  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(15)
 }
 
 counted_dated <- list()
@@ -101,7 +100,10 @@ ranked_by_date %>%
   aes(ymin = rank - .45,  
       ymax = rank + .45,  
       y = rank) +  
-  facet_wrap(~ date) +  
+  facet_wrap(~ date)  +  
+  scale_x_continuous(  
+    limits = c(-120, 100),  
+    breaks = c(0, 5, 10, 20)) +
   geom_rect(alpha = .7) +
   scale_fill_viridis_d(option = "magma",  
                        direction = -1) +  
@@ -119,7 +121,7 @@ ranked_by_date %>%
 a <- my_plot +  
   facet_null() +  
   scale_x_continuous(  
-    limits = c(-80, 100),  
+    limits = c(-120, 100),  
     breaks = c(0, 5, 10, 20)) +  
   geom_text(x = 1000 , y = -10,  
             family = "Times",  
