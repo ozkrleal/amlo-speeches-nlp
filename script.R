@@ -5,14 +5,14 @@ library(ggplot2)
 library(gganimate)   
 library(data.table)
 
-start <- as.Date("14/02/20","%d/%m/%y")
-end   <- as.Date("15/05/20","%d/%m/%y")
-
 getamloscripts <- function(){
+  start <- as.Date("14/02/20","%d/%m/%y")
+  end   <- as.Date("15/05/20","%d/%m/%y")
+  
   theDate <- start
   iterator <- 257
+  
   list_tibbles <- list()
-
   while (theDate <= end)
   {
     if(as.character(theDate) == "2020-02-21"){
@@ -50,33 +50,47 @@ getamloscripts <- function(){
   return(list_tibbles)
 }
 
-allscripts <- getamloscripts()
-
+#allscripts <- getamloscripts()
 #saveRDS(allscripts, file = "amlo_scripts_scraped.rds")
+
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
-
-custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va')), 
-                               tibble(word = tm::stopwords("spanish")))
-
-tidy_list <- list()
+tidy_bigrams <- list()
 for(i in names(allscripts)) {
-  tidy_list[[i]] <- allscripts[[i]] %>%
-    unnest_tokens(word, text) %>% anti_join(custom_stop_words) 
+  tidy_bigrams[[i]] <- allscripts[[i]] %>%
+    unnest_tokens(bigram, text, token = "ngrams", n = 2)
 }
 
-count_list <- list()
+count_bigrams <- list()
 for(i in names(tidy_list)){
-  count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(10)
+  count_bigrams[[i]] <- tidy_bigrams[[i]] %>% count(bigram, sort = TRUE) %>% head(10)
 }
 
-counted_dated <- list()
-for(i in names(count_list)){
-  counted_dated[[i]] <- tibble(word = count_list[[i]]$word, n = count_list[[i]]$n, date = c(i))
+transform_bind <- function(scripts){
+  custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
+                                                 'si', 'entonces', 'pregunta', 'interlocutora', 'va')), 
+                                 tibble(word = tm::stopwords("spanish")))
+  
+  tidy_list <- list()
+  for(i in names(scripts)) {
+    tidy_list[[i]] <- scripts[[i]] %>%
+      unnest_tokens(word, text) %>% anti_join(custom_stop_words) 
+  }
+  
+  count_list <- list()
+  for(i in names(tidy_list)){
+    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(10)
+  }
+  
+  counted_dated <- list()
+  for(i in names(count_list)){
+    counted_dated[[i]] <- tibble(word = count_list[[i]]$word, n = count_list[[i]]$n, date = c(i))
+  }
+  
+  return(counted_dated %>% bind_rows)
 }
 
-binded <- counted_dated %>% bind_rows
+binded <- transform_bind(allscripts)
 
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
