@@ -4,6 +4,7 @@ library(tidytext)
 library(ggplot2)
 library(gganimate)   
 library(data.table)
+library(tidyr)
 
 getamloscripts <- function(){
   start <- as.Date("14/02/20","%d/%m/%y")
@@ -55,22 +56,50 @@ getamloscripts <- function(){
 
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
-tidy_bigrams <- list()
-for(i in names(allscripts)) {
-  tidy_bigrams[[i]] <- allscripts[[i]] %>%
-    unnest_tokens(bigram, text, token = "ngrams", n = 2)
+custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', NA)), 
+                               tibble(word = tm::stopwords("spanish")))
+
+transform_bigrams <- function(){
+  tidy_bigrams <- list()
+  for(i in names(allscripts)) {
+    tidy_bigrams[[i]] <- allscripts[[i]] %>%
+      unnest_tokens(bigram, text, token = "ngrams", n = 2)
+  }
+  
+  bigrams_stopped <- list()
+  for(i in names(tidy_bigrams)){
+    bigrams_stopped[[i]] <- tidy_bigrams[[i]] %>% separate(bigram, c("word1", "word2"), sep = " ") %>% 
+      filter(!word1 %in% custom_stop_words$word,
+             !word2 %in% custom_stop_words$word) %>% 
+      count(word1, word2, sort = TRUE)
+    
+  }
+  
+  return(bigrams_stopped)
 }
 
-count_bigrams <- list()
-for(i in names(tidy_list)){
-  count_bigrams[[i]] <- tidy_bigrams[[i]] %>% count(bigram, sort = TRUE) %>% head(10)
+transform_trigrams <- function(){
+  tidy_bigrams <- list()
+  for(i in names(allscripts)) {
+    tidy_bigrams[[i]] <- allscripts[[i]] %>%
+      unnest_tokens(trigram, text, token = "ngrams", n = 3)
+  }
+  
+  trigrams_stopped <- list()
+  for(i in names(tidy_bigrams)){
+    trigrams_stopped[[i]] <- tidy_bigrams[[i]] %>% separate(trigram, c("word1", "word2", "word3"), sep = " ") %>% 
+      filter(!word1 %in% custom_stop_words$word,
+             !word2 %in% custom_stop_words$word,
+             !word3 %in% custom_stop_words$word) %>% 
+      count(word1, word2, word3, sort = TRUE)
+    
+  }
+  
+  return(trigrams_stopped)
 }
 
 transform_bind <- function(scripts){
-  custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                                 'si', 'entonces', 'pregunta', 'interlocutora', 'va')), 
-                                 tibble(word = tm::stopwords("spanish")))
-  
   tidy_list <- list()
   for(i in names(scripts)) {
     tidy_list[[i]] <- scripts[[i]] %>%
@@ -89,6 +118,10 @@ transform_bind <- function(scripts){
   
   return(counted_dated %>% bind_rows)
 }
+
+bigrams <- transform_bigrams()
+trigrams <- transform_trigrams()
+
 
 binded <- transform_bind(allscripts)
 
