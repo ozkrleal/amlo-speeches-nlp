@@ -6,6 +6,7 @@ library(gganimate)
 library(data.table)
 library(tidyr)
 library(topicmodels)
+library(quanteda)
 
 
 getamloscripts <- function(){
@@ -59,7 +60,7 @@ allscripts <- getamloscripts()
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
 custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', NA)), 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
 transform_bigrams <- function(){
@@ -110,7 +111,7 @@ transform_bind <- function(scripts){
   
   count_list <- list()
   for(i in names(tidy_list)){
-    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(10)
+    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(25)
   }
   
   counted_dated <- list()
@@ -121,16 +122,42 @@ transform_bind <- function(scripts){
   return(counted_dated %>% bind_rows)
 }
 
+
+
+
 bigrams <- transform_bigrams()
 trigrams <- transform_trigrams()
 
 
-
 binded <- transform_bind(allscripts)
-
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
 binded$datenumeric <- as.numeric(binded$datenumeric)
+
+#Casting of matrix
+dtm_one_words <- binded %>% cast_dtm(datenumeric, word, n)
+ap_lda <- LDA(dtm_one_words, k = 2, control = list(seed = 123)) 
+ap_topics <- tidy(ap_lda, matrix = "beta")
+
+#General topic modelling of his scripts
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
+
+
+
+binded %>% cast_dfm(datenumeric, word, n)
+
 
 binded %>%  
   # for each year we assign a rank
