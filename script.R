@@ -140,19 +140,30 @@ ap_lda <- LDA(dtm_one_words, k = 2, control = list(seed = 123))
 ap_topics <- tidy(ap_lda, matrix = "beta")
 
 #General topic modelling of his scripts
-ap_top_terms <- ap_topics %>%
+top_terms <- ap_topics %>%
   group_by(topic) %>%
   top_n(10, beta) %>%
   ungroup() %>%
   arrange(topic, -beta)
 
-ap_top_terms %>%
+top_terms %>%
   mutate(term = reorder_within(term, beta, topic)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ topic, scales = "free") +
   coord_flip() +
   scale_x_reordered()
+
+
+chapters_gamma <- tidy(ap_lda, matrix = "gamma")
+
+chapters_gamma %>%
+  mutate(title = reorder(document, gamma * topic)) %>%
+  ggplot(aes(factor(topic), gamma)) +
+  geom_boxplot() +
+  facet_wrap(~ document)
+
+
 
 
 
