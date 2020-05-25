@@ -5,6 +5,8 @@ library(ggplot2)
 library(gganimate)   
 library(data.table)
 library(tidyr)
+library(topicmodels)
+
 
 getamloscripts <- function(){
   start <- as.Date("14/02/20","%d/%m/%y")
@@ -51,12 +53,12 @@ getamloscripts <- function(){
   return(list_tibbles)
 }
 
-#allscripts <- getamloscripts()
+allscripts <- getamloscripts()
 #saveRDS(allscripts, file = "amlo_scripts_scraped.rds")
 
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
-custom_stop_words <- bind_rows(tibble(word = c('andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
+custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
                                                'si', 'entonces', 'pregunta', 'interlocutora', 'va', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
@@ -123,6 +125,7 @@ bigrams <- transform_bigrams()
 trigrams <- transform_trigrams()
 
 
+
 binded <- transform_bind(allscripts)
 
 binded$datenumeric <- gsub('/', '', binded$date)
@@ -137,7 +140,6 @@ binded %>%
   mutate(rank = row_number()) %>%  
   ungroup() ->  
   ranked_by_date
-
 
 my_theme <- theme_classic(base_family = "") +
   theme(axis.text.y = element_blank()) +
@@ -156,7 +158,7 @@ ranked_by_date %>%
       ymax = rank + .45,  
       y = rank) +   
   scale_x_continuous(  
-    limits = c(-120, 100),  
+    limits = c(-120, 120),  
     breaks = c(0, 10, 20, 30)) +
   geom_rect(alpha = .7) +
   scale_fill_viridis_d(option = "magma",  
@@ -167,7 +169,6 @@ ranked_by_date %>%
             aes(label = word),  
             x = -35) +  
   scale_y_reverse() +  
-  labs(fill = NULL) +  
   labs(x = 'n') +  
   labs(y = "") +  
   my_theme ->  
@@ -176,16 +177,16 @@ ranked_by_date %>%
 a <- my_plot +  
   facet_null() +  
   scale_x_continuous(  
-    limits = c(-110, 100),  
-    breaks = c(0, 10, 20, 30)) +  
+    limits = c(-110, 120),  
+    breaks = c(0, 10, 35, 70, 100)) +  
   geom_text(x = 60 , y = -10,  
             family = "",  
             aes(label = as.character(date)),  
             size = 25, col = "black") +  
   exit_disappear() +
-  gganimate::transition_states(datenumeric, transition_length = 50, state_length = 60)
+  gganimate::transition_states(datenumeric, transition_length = 1, state_length = 2)
 
-animate(a, fps = 2)
+animate(a, nframes = 150)
 
 anim_save("racewords-day.gif", a)
 
