@@ -10,7 +10,10 @@ library(quanteda)
 library(igraph)
 library(ggraph)
 library(stringr)
+library(forcats)
 
+
+##scraping
 getamloscripts <- function(){
   start <- as.Date("14/02/20","%d/%m/%y")
   end   <- as.Date("15/05/20","%d/%m/%y")
@@ -55,16 +58,21 @@ getamloscripts <- function(){
   }
   return(list_tibbles)
 }
-
 #allscripts <- getamloscripts()
 #saveRDS(allscripts, file = "amlo_scripts_scraped.rds")
 
+#read the rds with the scrapes
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
+#remove first generic row
+allscripts <- lapply(allscripts, function(i) i[-1,])
+
+#STOP WORDS
 custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', NA)), 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', 'buenos', 'dias', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
+#bigram transformation
 transform_bigrams <- function(){
   tidy_bigrams <- list()
   for(i in names(allscripts)) {
@@ -84,6 +92,7 @@ transform_bigrams <- function(){
   return(bigrams_stopped)
 }
 
+#trigram transformation
 transform_trigrams <- function(){
   tidy_bigrams <- list()
   for(i in names(allscripts)) {
@@ -104,11 +113,12 @@ transform_trigrams <- function(){
   return(trigrams_stopped)
 }
 
+#1 grams
 transform_bind <- function(scripts){
   tidy_list <- list()
   for(i in names(scripts)) {
     tidy_list[[i]] <- scripts[[i]] %>%
-      unnest_tokens(word, text) %>% anti_join(custom_stop_words) 
+      unnest_tokens(word, text) %>% anti_join(custom_stop_words)
   }
   
   count_list <- list()
@@ -124,6 +134,28 @@ transform_bind <- function(scripts){
   return(counted_dated %>% bind_rows)
 }
 
+#transform 1 gram without anti joining stop words
+transform_bind_no_stop <- function(scripts){
+  tidy_list <- list()
+  for(i in names(scripts)) {
+    tidy_list[[i]] <- scripts[[i]] %>%
+      unnest_tokens(word, text)
+  }
+  
+  count_list <- list()
+  for(i in names(tidy_list)){
+    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(25)
+  }
+  
+  counted_dated <- list()
+  for(i in names(count_list)){
+    counted_dated[[i]] <- tibble(word = count_list[[i]]$word, n = count_list[[i]]$n, date = c(i))
+  }
+  
+  return(counted_dated %>% bind_rows)
+}
+
+#viz function for bigrams->graphs
 visualize_bigrams <- function(bigrams) {
   set.seed(2016)
   a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
@@ -138,10 +170,27 @@ visualize_bigrams <- function(bigrams) {
 }
 
 bigrams <- transform_bigrams()
-bigram_graph <- bigrams[[1]] %>% filter(n>1, 
-                                        !str_detect(word1, "\\d"),
-                                        !str_detect(word2, "\\d")) 
-visualize_bigrams(bigram_graph)
+
+bigram_graph <- list()
+for(i in names(bigrams)){
+  bigram_graph[[i]] <- bigrams[[i]] %>% filter(n>2, 
+                                               !str_detect(word1, "\\d"),
+                                               !str_detect(word2, "\\d")) 
+}
+
+
+png(file="plots_bigrams/plot%02d.png")
+for (i in names(bigram_graph)){
+  png3 <- visualize_bigrams(bigram_graph[[i]])
+  plot(png3)
+}
+dev.off()
+
+#system("dir")
+#wd <- getwd()
+#system(paste0("magick convert -delay 50 ", wd," *.png example_1.gif"))
+#file.remove(list.files(pattern=".png"))
+
 bigram_graph
 
 bigrams_binded <- bigrams %>% bind_rows
@@ -154,8 +203,94 @@ trigrams <- transform_trigrams()
 binded <- transform_bind(allscripts)
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
-binded$datenumeric <- as.numeric(binded$datenumeric)
 
+
+#tf-idf  term frequency
+binded_no_stop <- transform_bind_no_stop(allscripts)
+binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
+binded_no_stop$datenumeric <- gsub('/', '', binded$date)
+binded_no_stop$date <- as.factor(binded$date)
+binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
+
+total_words <- binded %>% 
+  group_by(date) %>%
+  summarize(total = sum(n))
+
+script_words <- left_join(binded, total_words)
+
+
+total_words_no_stop <- binded_no_stop %>% 
+  group_by(date) %>%
+  summarize(total = sum(n))
+
+script_words_no_stop <- left_join(binded_no_stop, total_words_no_stop)
+
+#gif n by total distribution (term frequency)
+ntotalplot <- ggplot(script_words_no_stop, aes(n/total, fill = date)) +
+  geom_histogram(show.legend = FALSE) +
+  geom_text(x = .15 , y = 3,  
+            family = "",  
+            aes(label = as.character(date)),  
+            size = 25, col = "black") +  
+  gganimate::transition_states(datenumeric, transition_length = 1, state_length = 2)
+
+ntotalplot <- animate(ntotalplot, nframes = 132)
+
+anim_save("nbytotal.gif", ntotalplot)
+
+#zipfs law 
+freq_by_rank <- script_words_no_stop %>% 
+  group_by(datenumeric) %>% 
+  mutate(rank = row_number(), 
+         `term frequency` = n/total)
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = date)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = date)) + 
+  geom_abline(intercept = -0.27, slope = -1.17, color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+
+#high tf idf plot
+script_words_no_stop <- script_words_no_stop %>%
+  bind_tf_idf(word, date, n)
+
+script_words %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+
+plot_hightf <- script_words_no_stop %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(date) %>% 
+  top_n(15) %>% 
+  ungroup() %>%
+  ggplot(aes(word, tf_idf, fill = date)) +
+  geom_col(alpha = 0.3, show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  coord_flip() +
+  gganimate::transition_reveal(datenumeric)
+
+plot_hightf <- animate(plot_hightf, nframes = 132)
+
+anim_save("hightfidfwords.gif", plot_hightf)
+  
+
+##TOPIC MODELLING
 #Casting of matrix
 dtm_one_words <- binded %>% cast_dtm(datenumeric, word, n)
 ap_lda <- LDA(dtm_one_words, k = 2, control = list(seed = 123)) 
@@ -246,15 +381,6 @@ a <- my_plot +
   exit_disappear() +
   gganimate::transition_states(datenumeric, transition_length = 1, state_length = 2)
 
-animate(a, nframes = 150)
+animate(a, nframes = 132)
 
 anim_save("racewords-day.gif", a)
-
-tidy_script %>%
-  count(word, sort = TRUE) %>%
-  filter(n > 10) %>%
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n)) +
-  geom_col() +
-  xlab(NULL) +
-  coord_flip()
