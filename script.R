@@ -7,7 +7,9 @@ library(data.table)
 library(tidyr)
 library(topicmodels)
 library(quanteda)
-
+library(igraph)
+library(ggraph)
+library(stringr)
 
 getamloscripts <- function(){
   start <- as.Date("14/02/20","%d/%m/%y")
@@ -54,7 +56,7 @@ getamloscripts <- function(){
   return(list_tibbles)
 }
 
-allscripts <- getamloscripts()
+#allscripts <- getamloscripts()
 #saveRDS(allscripts, file = "amlo_scripts_scraped.rds")
 
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
@@ -122,11 +124,31 @@ transform_bind <- function(scripts){
   return(counted_dated %>% bind_rows)
 }
 
-
-
+visualize_bigrams <- function(bigrams) {
+  set.seed(2016)
+  a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+  
+  bigrams %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
+    geom_node_point(color = "lightblue", size = 5) +
+    geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+    theme_void()
+}
 
 bigrams <- transform_bigrams()
+bigram_graph <- bigrams[[1]] %>% filter(n>1, 
+                                        !str_detect(word1, "\\d"),
+                                        !str_detect(word2, "\\d")) 
+visualize_bigrams(bigram_graph)
+bigram_graph
+
+bigrams_binded <- bigrams %>% bind_rows
+
+
 trigrams <- transform_trigrams()
+
 
 
 binded <- transform_bind(allscripts)
