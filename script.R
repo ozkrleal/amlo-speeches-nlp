@@ -293,7 +293,7 @@ anim_save("hightfidfwords.gif", plot_hightf)
 ##TOPIC MODELLING
 #Casting of matrix
 dtm_one_words <- binded %>% cast_dtm(datenumeric, word, n)
-ap_lda <- LDA(dtm_one_words, k = 2, control = list(seed = 123)) 
+ap_lda <- LDA(dtm_one_words, k = 3, control = list(seed = 123)) 
 ap_topics <- tidy(ap_lda, matrix = "beta")
 
 #General topic modelling of his scripts

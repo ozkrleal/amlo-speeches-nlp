@@ -1,0 +1,144 @@
+---
+title: "amlo-speech-nlp"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library(ggplot2)
+library(mgcv)
+library(flexdashboard)
+library(coronavirus)
+
+dataset <- diamonds
+
+
+allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
+```
+
+Outputs
+=======================================================================
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+sliderInput('sampleSize', 'Sample Size', min=1, max=nrow(dataset),
+            value=min(1000, nrow(dataset)), step=500, round=0)
+
+checkboxInput('jitter', 'Jitter', value = TRUE)
+checkboxInput('smooth', 'Smooth', value = TRUE)
+
+selectInput('x', 'X', names(dataset))
+selectInput('y', 'Y', names(dataset), names(dataset)[[2]])
+selectInput('color', 'Color', c('None', names(dataset)))
+
+selectInput('facet_row', 'Facet Row',
+            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
+selectInput('facet_col', 'Facet Column',
+            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
+```
+
+Row 
+---------------------------------------------------------------------
+
+### Downloads per sec (last 5 min) {.value-box}
+
+```{r}
+# downloadRate is a reactive expression that computes the download
+# rate during this dashboard's lifetime.
+
+# Emit the download rate
+renderValueBox({
+  valueBox(
+    value = 3434,
+    icon = "fa-area-chart",
+    #color = if (rate >= input$rateThreshold) "warning" else "primary"
+  )
+})
+```
+
+### Total downloads {.value-box}
+
+```{r}
+# dlCount is a reactive expression that keeps track of the total
+# number of rows that have ever appeared through pkgStream.
+# Emit the download count
+renderValueBox({
+  valueBox(3, icon = "fa-download")
+})
+```
+
+### Unique users {.value-box}
+
+```{r}
+# usrCount is a reactive expression that keeps an approximate
+# count of all of the unique users that have been seen since the
+# app started.
+
+# Emit the user count
+renderValueBox({
+  valueBox(value = 5, icon = "fa-users")
+})
+```
+
+### Diamonds
+------------------------------------------------------------------------
+
+```{r}
+dataset <- reactive({
+  diamonds[sample(nrow(diamonds), input$sampleSize),]
+})
+
+renderPlot({
+  p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
+  
+  if (input$color != 'None')
+    p <- p + aes_string(color=input$color)
+  
+  facets <- paste(input$facet_row, '~', input$facet_col)
+  if (facets != '. ~ .')
+    p <- p + facet_grid(facets)
+  
+  if (input$jitter)
+    p <- p + geom_jitter()
+  if (input$smooth)
+    p <- p + geom_smooth()
+  
+  print(p)
+})
+```
+
+
+
+Tabeander
+=========================================================================
+
+### aurio
+
+```{r}
+dataset <- reactive({
+  diamonds[sample(nrow(diamonds), input$sampleSize),]
+})
+
+renderPlot({
+  p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
+  
+  if (input$color != 'None')
+    p <- p + aes_string(color=input$color)
+  
+  facets <- paste(input$facet_row, '~', input$facet_col)
+  if (facets != '. ~ .')
+    p <- p + facet_grid(facets)
+  
+  if (input$jitter)
+    p <- p + geom_jitter()
+  if (input$smooth)
+    p <- p + geom_smooth()
+  
+  print(p)
+})
+```
