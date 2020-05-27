@@ -3,8 +3,8 @@ title: "amlo-speech-nlp"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
-    social: menu
     theme: spacelab
+    vertical_layout: fill
     source_code: https://github.com/ozkrleal/amlo-speeches-nlp
 runtime: shiny
 ---
@@ -26,6 +26,7 @@ library(igraph)
 library(ggraph)
 library(stringr)
 library(forcats)
+library(shinyWidgets)
 
 dataset <- diamonds
 
@@ -40,7 +41,7 @@ custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lóp
                                                'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', 'buenos', 'dias', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
-transform_bind <- function(scripts){
+transform_bind <- function(scripts, headn = 0){
   tidy_list <- list()
   for(i in names(scripts)) {
     tidy_list[[i]] <- scripts[[i]] %>%
@@ -48,9 +49,16 @@ transform_bind <- function(scripts){
   }
   
   count_list <- list()
-  for(i in names(tidy_list)){
-    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE)
+  if(headn == 0){
+    for(i in names(tidy_list)){
+        count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE)
+     }
+  } else {
+    for(i in names(tidy_list)){
+        count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(headn)
+     }
   }
+
   
   counted_dated <- list()
   for(i in names(count_list)){
@@ -63,6 +71,27 @@ transform_bind <- function(scripts){
 binded <- transform_bind(allscripts)
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
+
+bindedtop25 <- transform_bind(allscripts, 25)
+bindedtop25$datenumeric <- gsub('/', '', bindedtop25$date)
+bindedtop25$date <- as.factor(bindedtop25$date)
+
+bindedtop25 %>%  
+  # for each year we assign a rank
+  group_by(datenumeric) %>%  
+  arrange(datenumeric, -n) %>%  
+  # assign ranking
+  mutate(rank = row_number()) %>%  
+  ungroup() ->  
+  ranked_by_date
+
+my_theme <- theme_classic(base_family = "") +
+  theme(axis.text.y = element_blank()) +
+  theme(axis.ticks.y = element_blank()) +
+  theme(axis.line.y = element_blank()) +
+  theme(legend.background = element_rect(fill = "gainsboro")) +
+  theme(plot.background = element_rect(fill = "gainsboro")) +
+  theme(panel.background = element_rect(fill = "gainsboro"))
 
 
 ```
@@ -110,7 +139,7 @@ renderValueBox({
 })
 ```
 
-Hypothesis {data-height = 100}
+Hypothesis
 ------------------------------------------------------------------------
 
 ### Intro:
@@ -138,7 +167,66 @@ We will be mentioning the date when the petrol dropped to see if the speech cont
 
 ![](./amlover.jpg){#id .class width=1000px height=350px}
 
-Tabeander
+1 Grams tokens
+=========================================================================
+
+----------------------------------------------------------------------
+```{r}
+materialSwitch(inputId = "id", label = "Day by day / all speeches", status = "danger")
+```
+
+aurio
+----------------------------------------------------------------------
+
+```{r}
+fillCol(sliderTextInput(
+inputId = "sliderdate", 
+label = "Choose day:",
+grid = TRUE, 
+width = 1000,
+force_edges = TRUE,
+choices = unique(as.character(bindedtop25$date))
+))
+```
+
+### o maurio
+----------------------------------------------------------------------
+
+```{r}
+dataset <- reactive({
+  dataset <- ranked_by_date %>% filter(as.character(date) == (input$sliderdate)) 
+  dataset
+})
+
+renderPlot({
+  p <- ggplot(dataset()) +  
+  aes(xmin = 0 ,  
+      xmax = n) +  
+  aes(ymin = rank - .45,  
+      ymax = rank + .45,  
+      y = rank) +   
+  scale_x_continuous(  
+    limits = c(-120, 120),  
+    breaks = c(0, 10, 20, 30)) +
+  geom_rect(alpha = .7) +
+  scale_fill_viridis_d(option = "magma",  
+                       direction = -1) +  
+  geom_text(col = "gray13",  
+            hjust = "right",
+            size = 9,
+            aes(label = word),  
+            x = -35) +  
+  scale_y_reverse() +  
+  labs(x = 'n') +  
+  labs(y = "") +
+  ggtitle("Most used words") +
+  my_theme
+  
+  print(p)
+})
+```
+
+Bigrams & Trigrams
 =========================================================================
 
 Inputs {.sidebar}
@@ -165,125 +253,41 @@ selectInput('facet_col', 'Facet Column',
 ----------------------------------------------------------------------
 
 ```{r}
-dataset <- reactive({
-  diamonds[sample(nrow(diamonds), input$sampleSize),]
-})
 
-renderPlot({
-  p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
-  
-  if (input$color != 'None')
-    p <- p + aes_string(color=input$color)
-  
-  facets <- paste(input$facet_row, '~', input$facet_col)
-  if (facets != '. ~ .')
-    p <- p + facet_grid(facets)
-  
-  if (input$jitter)
-    p <- p + geom_jitter()
-  if (input$smooth)
-    p <- p + geom_smooth()
-  
-  print(p)
-})
+
+
 ```
 
-Tabeander
+TF - IDF
 =========================================================================
 
 Inputs {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r}
-sliderInput('sampleSize', 'Sample Size', min=1, max=nrow(dataset),
-            value=min(1000, nrow(dataset)), step=500, round=0)
 
-checkboxInput('jitter', 'Jitter', value = TRUE)
-checkboxInput('smooth', 'Smooth', value = TRUE)
-
-selectInput('x', 'X', names(dataset))
-selectInput('y', 'Y', names(dataset), names(dataset)[[2]])
-selectInput('color', 'Color', c('None', names(dataset)))
-
-selectInput('facet_row', 'Facet Row',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
-selectInput('facet_col', 'Facet Column',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
 ```
 
 ### aurio
 ----------------------------------------------------------------------
 
 ```{r}
-dataset <- reactive({
-  diamonds[sample(nrow(diamonds), input$sampleSize),]
-})
 
-renderPlot({
-  p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
-  
-  if (input$color != 'None')
-    p <- p + aes_string(color=input$color)
-  
-  facets <- paste(input$facet_row, '~', input$facet_col)
-  if (facets != '. ~ .')
-    p <- p + facet_grid(facets)
-  
-  if (input$jitter)
-    p <- p + geom_jitter()
-  if (input$smooth)
-    p <- p + geom_smooth()
-  
-  print(p)
-})
 ```
 
-Tabeander
+Topic Modelling
 =========================================================================
 
 Inputs {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r}
-sliderInput('sampleSize', 'Sample Size', min=1, max=nrow(dataset),
-            value=min(1000, nrow(dataset)), step=500, round=0)
 
-checkboxInput('jitter', 'Jitter', value = TRUE)
-checkboxInput('smooth', 'Smooth', value = TRUE)
-
-selectInput('x', 'X', names(dataset))
-selectInput('y', 'Y', names(dataset), names(dataset)[[2]])
-selectInput('color', 'Color', c('None', names(dataset)))
-
-selectInput('facet_row', 'Facet Row',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
-selectInput('facet_col', 'Facet Column',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
 ```
 
 ### aurio
 ----------------------------------------------------------------------
 
 ```{r}
-dataset <- reactive({
-  diamonds[sample(nrow(diamonds), input$sampleSize),]
-})
 
-renderPlot({
-  p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
-  
-  if (input$color != 'None')
-    p <- p + aes_string(color=input$color)
-  
-  facets <- paste(input$facet_row, '~', input$facet_col)
-  if (facets != '. ~ .')
-    p <- p + facet_grid(facets)
-  
-  if (input$jitter)
-    p <- p + geom_jitter()
-  if (input$smooth)
-    p <- p + geom_smooth()
-  
-  print(p)
-})
 ```
