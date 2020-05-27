@@ -6,12 +6,10 @@ library(gganimate)
 library(data.table)
 library(tidyr)
 library(topicmodels)
-library(quanteda)
 library(igraph)
 library(ggraph)
 library(stringr)
 library(forcats)
-
 
 ##scraping
 getamloscripts <- function(){
