@@ -170,29 +170,31 @@ We will be mentioning the date when the petrol dropped to see if the speech cont
 1 Grams tokens
 =========================================================================
 
+row {data-height=50}
 ----------------------------------------------------------------------
 ```{r}
 materialSwitch(inputId = "id", label = "Day by day / all speeches", status = "danger")
 ```
 
-aurio
+aurio {data-height=50}
 ----------------------------------------------------------------------
 
 ```{r}
-fillCol(sliderTextInput(
+sliderTextInput(
 inputId = "sliderdate", 
 label = "Choose day:",
 grid = TRUE, 
 width = 1000,
 force_edges = TRUE,
 choices = unique(as.character(bindedtop25$date))
-))
+)
+br()
 ```
 
-### o maurio
+o maurio {data-height=400}
 ----------------------------------------------------------------------
 
-```{r}
+```{r, fig.height=400}
 dataset <- reactive({
   dataset <- ranked_by_date %>% filter(as.character(date) == (input$sliderdate)) 
   dataset
@@ -206,16 +208,16 @@ renderPlot({
       ymax = rank + .45,  
       y = rank) +   
   scale_x_continuous(  
-    limits = c(-120, 120),  
-    breaks = c(0, 10, 20, 30)) +
-  geom_rect(alpha = .7) +
+    limits = c(-140, 140),  
+    breaks = c(0, 10, 30, 80)) +
+  geom_rect(alpha = .7, size = 30) +
   scale_fill_viridis_d(option = "magma",  
                        direction = -1) +  
   geom_text(col = "gray13",  
             hjust = "right",
-            size = 9,
+            size = 8,
             aes(label = word),  
-            x = -35) +  
+            x = -25) +  
   scale_y_reverse() +  
   labs(x = 'n') +  
   labs(y = "") +
@@ -223,7 +225,7 @@ renderPlot({
   my_theme
   
   print(p)
-})
+}, )
 ```
 
 Bigrams & Trigrams
