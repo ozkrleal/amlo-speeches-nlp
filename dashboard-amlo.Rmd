@@ -217,10 +217,10 @@ tags$style(type="text/css",
 
 #tf-idf  term frequency
 binded_no_stop <- transform_bind_no_stop(allscripts)
-binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
-binded_no_stop$datenumeric <- gsub('/', '', binded$date)
-binded_no_stop$date <- as.character(binded$date)
-binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
+binded_no_stop$datenumeric <- gsub('/', '', binded_no_stop$date)
+binded_no_stop$datenumeric <- as.numeric(binded_no_stop$datenumeric)
+binded_no_stop$date <- as.character(binded_no_stop$date)
+binded_no_stop$datenumeric <- as.numeric(binded_no_stop$datenumeric)
 
 total_words <- binded %>% 
   group_by(date) %>%
@@ -233,9 +233,6 @@ total_words_no_stop <- binded_no_stop %>%
   summarize(total = sum(n))
 
 script_words_no_stop <- left_join(binded_no_stop, total_words_no_stop)
-
-
-
 ```
 
 Exploration and hypothesis
@@ -485,7 +482,7 @@ label = "Choose a day",
 grid = TRUE, 
 width = 1500,
 force_edges = TRUE,
-choices = unique(as.character(bindedtop25$date))
+choices = unique(as.character(script_words_no_stop$date))
 )
 br()
 ```
