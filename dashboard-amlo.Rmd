@@ -444,7 +444,7 @@ renderPlot(
 ### aurio
 ----------------------------------------------------------------------
 
-```{r, error = F}
+```{r}
 trigram_graphdf <- reactive({
   trigram_graphdf <- trigram_graph %>% filter(as.character(date) == input$sliderdate2)
   trigram_graphdf
@@ -464,6 +464,8 @@ renderPlot(
 )
 
 ```
+
+As we can see, there's not many trigrams appearing, repetition is not a case in such speeches of AMLO.
 
 TF - IDF
 =========================================================================
