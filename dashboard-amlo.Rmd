@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     theme: spacelab
-    vertical_layout: fill
+    vertical_layout: scroll
     source_code: https://github.com/ozkrleal/amlo-speeches-nlp
 runtime: shiny
 ---
@@ -27,9 +27,15 @@ library(ggraph)
 library(stringr)
 library(forcats)
 library(shinyWidgets)
+library(plotly)
 
-dataset <- diamonds
+data(coronavirus)
 
+# set colors
+confirmed_color <- "purple"
+active_color <- "#1f77b4"
+recovered_color <- "forestgreen"
+death_color <- "red"
 
 allscripts <- readRDS(file = "amlo_scripts_scraped.rds")
 
@@ -38,7 +44,8 @@ allscripts <- lapply(allscripts, function(i) i[-1,])
 
 #STOP WORDS
 custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', 'buenos', 'dias', NA)), 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', 
+                                               'buenos', 'dias', 'méxico', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
 transform_bind <- function(scripts, headn = 0){
@@ -93,6 +100,101 @@ my_theme <- theme_classic(base_family = "") +
   theme(plot.background = element_rect(fill = "gainsboro")) +
   theme(panel.background = element_rect(fill = "gainsboro"))
 
+df_daily <- coronavirus %>% 
+  group_by(date, type) %>%
+  filter(country == "Mexico" & date >= as.Date('2020-02-14') & date <= as.Date('2020-05-15')) %>%
+  summarise(total = sum(cases, na.rm = TRUE)) %>%
+  pivot_wider(names_from = type,
+                     values_from = total) %>%
+  arrange(date) %>%
+  ungroup() %>%
+  mutate(active =  confirmed - death - recovered) %>%
+  mutate(confirmed_cum = cumsum(confirmed),
+                death_cum = cumsum(death),
+                recovered_cum = cumsum(recovered),
+                active_cum = cumsum(active))
+
+#bigram transformation
+transform_bigrams <- function(){
+  tidy_bigrams <- list()
+  for(i in names(allscripts)) {
+    tidy_bigrams[[i]] <- allscripts[[i]] %>%
+      unnest_tokens(bigram, text, token = "ngrams", n = 2)
+  }
+  
+  bigrams_stopped <- list()
+  for(i in names(tidy_bigrams)){
+    bigrams_stopped[[i]] <- tidy_bigrams[[i]] %>% separate(bigram, c("word1", "word2"), sep = " ") %>% 
+      filter(!word1 %in% custom_stop_words$word,
+             !word2 %in% custom_stop_words$word) %>% 
+      count(word1, word2, sort = TRUE)
+    
+  }
+  
+  bigrams_dated <- list()
+  for(i in names(bigrams_stopped)){
+    bigrams_dated[[i]] <- tibble(word1 = bigrams_stopped[[i]]$word1, word2 = bigrams_stopped[[i]]$word2, n = bigrams_stopped[[i]]$n, date = c(i))
+  }
+  
+  
+  return(bigrams_dated)
+}
+
+#trigram transformation
+transform_trigrams <- function(){
+  tidy_bigrams <- list()
+  for(i in names(allscripts)) {
+    tidy_bigrams[[i]] <- allscripts[[i]] %>%
+      unnest_tokens(trigram, text, token = "ngrams", n = 3)
+  }
+  
+  trigrams_stopped <- list()
+  for(i in names(tidy_bigrams)){
+    trigrams_stopped[[i]] <- tidy_bigrams[[i]] %>% separate(trigram, c("word1", "word2", "word3"), sep = " ") %>% 
+      filter(!word1 %in% custom_stop_words$word,
+             !word2 %in% custom_stop_words$word,
+             !word3 %in% custom_stop_words$word) %>% 
+      count(word1, word2, word3, sort = TRUE)
+    
+  }
+  
+  trigrams_dated <- list()
+  for(i in names(trigrams_stopped)){
+    trigrams_dated[[i]] <- tibble(word1 = trigrams_stopped[[i]]$word1, word2 = trigrams_stopped[[i]]$word2,
+                                  word3 = trigrams_stopped[[i]]$word3, n = trigrams_stopped[[i]]$n, date = c(i))
+  }
+  
+  return(trigrams_dated)
+}
+
+bigrams <- transform_bigrams()
+bigram_graph <- list()
+for(i in names(bigrams)){
+  bigram_graph[[i]] <- bigrams[[i]] %>% filter(n>2, 
+                                               !str_detect(word1, "\\d"),
+                                               !str_detect(word2, "\\d")) 
+}
+
+bigram_graph <- bigram_graph %>% bind_rows
+
+trigrams <- transform_trigrams()
+
+trigram_graph <- list()
+for(i in names(bigrams)){
+  trigram_graph[[i]] <- trigrams[[i]] %>% filter(n>2, 
+                                               !str_detect(word1, "\\d"),
+                                               !str_detect(word2, "\\d"),
+                                               !str_detect(word3, "\\d")) 
+}
+trigram_graph <- trigram_graph %>% bind_rows
+
+# supress non existent trigrams
+tags$style(type="text/css",
+  ".shiny-output-error { visibility: hidden; }",
+  ".shiny-output-error:before { visibility: hidden; }"
+)
+
+
 
 ```
 
@@ -146,7 +248,7 @@ Hypothesis
 
 This dashboard contains the scripts of the speeches of the *conferencia matutina* (daily morning conference) starring the president of Mexico, Andres Manuel Lopez Obrador from February 14th, until May 15th of 2020. 
 
-We will be showing distinct kind of shapes of data plotted in intuitive ways so it is easier for everyone to understand.
+We will be showing distinct kind of shapes of data plotted in intuitive ways so it is easy for everyone to understand.
 
 ### Hypothesis:
 There must be a change of vocabulary and key words usage if we compare his speeches before COVID-19 and after it. 
@@ -165,26 +267,20 @@ We will be mentioning the date when the petrol dropped to see if the speech cont
 ### Diamonds
 ------------------------------------------------------------------------
 
-![](./amlover.jpg){#id .class width=1000px height=350px}
+![](./amlover.jpg){#id .class width=1500px height=550px}
 
 1 Grams tokens
 =========================================================================
 
-row {data-height=50}
-----------------------------------------------------------------------
-```{r}
-materialSwitch(inputId = "id", label = "Day by day / all speeches", status = "danger")
-```
-
-aurio {data-height=50}
+aurio {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
 sliderTextInput(
 inputId = "sliderdate", 
-label = "Choose day:",
+label = "Choose a day",
 grid = TRUE, 
-width = 1000,
+width = 1500,
 force_edges = TRUE,
 choices = unique(as.character(bindedtop25$date))
 )
@@ -194,7 +290,7 @@ br()
 o maurio {data-height=400}
 ----------------------------------------------------------------------
 
-```{r, fig.height=400}
+```{r, fig.height=300}
 dataset <- reactive({
   dataset <- ranked_by_date %>% filter(as.character(date) == (input$sliderdate)) 
   dataset
@@ -211,7 +307,7 @@ renderPlot({
     limits = c(-140, 140),  
     breaks = c(0, 10, 30, 80)) +
   geom_rect(alpha = .7, size = 30) +
-  scale_fill_viridis_d(option = "magma",  
+  scale_fill_viridis_d(option = "inferno",  
                        direction = -1) +  
   geom_text(col = "gray13",  
             hjust = "right",
@@ -228,46 +324,126 @@ renderPlot({
 }, )
 ```
 
+Malaurio {data-height = 100, data-width = 1000}
+----------------------------------------------------------------------
+
+```{r}
+coronadf <- reactive({
+  coronadf <- df_daily %>% filter(date <= as.Date(paste0("2020/",as.character(input$sliderdate))) )
+  coronadf
+})
+
+renderPlotly(
+plotly::plot_ly(data = coronadf(),
+                x = ~ date,
+                y = ~ active_cum, 
+                name = 'Active', 
+                fillcolor = active_color,
+                type = 'scatter',
+                mode = 'none', 
+                stackgroup = 'one') %>%
+  plotly::add_trace(y = ~ recovered_cum,
+                    name = "Recovered",
+                    fillcolor = recovered_color) %>%
+  plotly::add_trace(y = ~ death_cum,
+                    name = "Death",
+                    fillcolor = death_color) %>%
+  plotly::layout(title = "",
+                 yaxis = list(title = "Cumulative Number of Cases in Mexico"),
+                 xaxis = list(title = "Date"),
+                 legend = list(x = 0.1, y = 0.9),
+                 hovermode = "compare")
+)
+```
+
+Ontario
+---------------------------------------------------------------------
+
+Here we can note how the most used words per day reflects by the cases that start to show. 
+The first registered case appears in Mexico on February 28.
+
+
 Bigrams & Trigrams
 =========================================================================
 
-Inputs {.sidebar}
------------------------------------------------------------------------
+aurio {data-height=100}
+----------------------------------------------------------------------
 
 ```{r}
-sliderInput('sampleSize', 'Sample Size', min=1, max=nrow(dataset),
-            value=min(1000, nrow(dataset)), step=500, round=0)
-
-checkboxInput('jitter', 'Jitter', value = TRUE)
-checkboxInput('smooth', 'Smooth', value = TRUE)
-
-selectInput('x', 'X', names(dataset))
-selectInput('y', 'Y', names(dataset), names(dataset)[[2]])
-selectInput('color', 'Color', c('None', names(dataset)))
-
-selectInput('facet_row', 'Facet Row',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
-selectInput('facet_col', 'Facet Column',
-            c(None='.', names(diamonds[sapply(diamonds, is.factor)])))
+sliderTextInput(
+inputId = "sliderdate2", 
+label = "Choose a day",
+grid = TRUE, 
+width = 1500,
+force_edges = TRUE,
+choices = unique(as.character(bindedtop25$date))
+)
+br()
 ```
 
 ### aurio
 ----------------------------------------------------------------------
 
 ```{r}
+bigram_graphdf <- reactive({
+  bigram_graphdf <- bigram_graph %>% filter(as.character(date) == (input$sliderdate2)) 
+  bigram_graphdf
+})
 
+set.seed(2016)
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+  
+renderPlot(
+  bigram_graphdf() %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
+    geom_node_point(color = "lightblue", size = 5) +
+    geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+    theme_void()
+)
+```
 
+### aurio
+----------------------------------------------------------------------
+
+```{r, error = F}
+trigram_graphdf <- reactive({
+  trigram_graphdf <- trigram_graph %>% filter(as.character(date) == input$sliderdate2)
+  trigram_graphdf
+})
+
+set.seed(2016)
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+  
+renderPlot(
+    trigram_graphdf() %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
+    geom_node_point(color = "lightblue", size = 5) +
+    geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+    theme_void()
+)
 
 ```
 
 TF - IDF
 =========================================================================
 
-Inputs {.sidebar}
------------------------------------------------------------------------
+aurio {data-height=100}
+----------------------------------------------------------------------
 
 ```{r}
-
+sliderTextInput(
+inputId = "sliderdate", 
+label = "Choose a day",
+grid = TRUE, 
+width = 1500,
+force_edges = TRUE,
+choices = unique(as.character(bindedtop25$date))
+)
+br()
 ```
 
 ### aurio
@@ -280,11 +456,19 @@ Inputs {.sidebar}
 Topic Modelling
 =========================================================================
 
-Inputs {.sidebar}
------------------------------------------------------------------------
+aurio {data-height=100}
+----------------------------------------------------------------------
 
 ```{r}
-
+sliderTextInput(
+inputId = "sliderdate", 
+label = "Choose a day",
+grid = TRUE, 
+width = 1500,
+force_edges = TRUE,
+choices = unique(as.character(bindedtop25$date))
+)
+br()
 ```
 
 ### aurio

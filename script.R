@@ -87,7 +87,13 @@ transform_bigrams <- function(){
     
   }
   
-  return(bigrams_stopped)
+  bigrams_dated <- list()
+  for(i in names(bigrams_stopped)){
+    bigrams_dated[[i]] <- tibble(word1 = bigrams_stopped[[i]]$word1, word2 = bigrams_stopped[[i]]$word2, n = bigrams_stopped[[i]]$n, date = c(i))
+  }
+  
+  
+  return(bigrams_dated)
 }
 
 #trigram transformation
@@ -168,7 +174,6 @@ visualize_bigrams <- function(bigrams) {
 }
 
 bigrams <- transform_bigrams()
-
 bigram_graph <- list()
 for(i in names(bigrams)){
   bigram_graph[[i]] <- bigrams[[i]] %>% filter(n>2, 
@@ -176,6 +181,7 @@ for(i in names(bigrams)){
                                                !str_detect(word2, "\\d")) 
 }
 
+bigram_graph %>% bind_rows
 
 png(file="plots_bigrams/plot%02d.png")
 for (i in names(bigram_graph)){
