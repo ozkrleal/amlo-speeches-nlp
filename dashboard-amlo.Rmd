@@ -75,6 +75,27 @@ transform_bind <- function(scripts, headn = 0){
   return(counted_dated %>% bind_rows)
 }
 
+transform_bind_no_stop <- function(scripts){
+  tidy_list <- list()
+  for(i in names(scripts)) {
+    tidy_list[[i]] <- scripts[[i]] %>%
+      unnest_tokens(word, text)
+  }
+  
+  count_list <- list()
+  for(i in names(tidy_list)){
+    count_list[[i]] <- tidy_list[[i]] %>% count(word, sort = TRUE) %>% head(25)
+  }
+  
+  counted_dated <- list()
+  for(i in names(count_list)){
+    counted_dated[[i]] <- tibble(word = count_list[[i]]$word, n = count_list[[i]]$n, date = c(i))
+  }
+  
+  return(counted_dated %>% bind_rows)
+}
+
+
 binded <- transform_bind(allscripts)
 binded$datenumeric <- gsub('/', '', binded$date)
 binded$date <- as.factor(binded$date)
@@ -193,6 +214,25 @@ tags$style(type="text/css",
   ".shiny-output-error { visibility: hidden; }",
   ".shiny-output-error:before { visibility: hidden; }"
 )
+
+#tf-idf  term frequency
+binded_no_stop <- transform_bind_no_stop(allscripts)
+binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
+binded_no_stop$datenumeric <- gsub('/', '', binded$date)
+binded_no_stop$date <- as.character(binded$date)
+binded_no_stop$datenumeric <- as.numeric(binded$datenumeric)
+
+total_words <- binded %>% 
+  group_by(date) %>%
+  summarize(total = sum(n))
+
+script_words <- left_join(binded, total_words)
+
+total_words_no_stop <- binded_no_stop %>% 
+  group_by(date) %>%
+  summarize(total = sum(n))
+
+script_words_no_stop <- left_join(binded_no_stop, total_words_no_stop)
 
 
 
@@ -431,12 +471,16 @@ renderPlot(
 TF - IDF
 =========================================================================
 
+row
+----------------------------------------------------------------------
+![](./nbytotal.gif)
+
 aurio {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
 sliderTextInput(
-inputId = "sliderdate", 
+inputId = "sliderdate3", 
 label = "Choose a day",
 grid = TRUE, 
 width = 1500,
