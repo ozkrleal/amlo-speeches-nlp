@@ -336,7 +336,7 @@ We will be check the date when the petrol dropped (4/20) to see if the speech co
 1 Grams tokens
 =========================================================================
 
-aurio {data-height=100}
+row {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
@@ -351,7 +351,7 @@ choices = unique(as.character(bindedtop25$date))
 br()
 ```
 
-o maurio {data-height=400}
+row {data-height=400}
 ----------------------------------------------------------------------
 
 ```{r, fig.height=300}
@@ -388,7 +388,7 @@ renderPlot({
 }, )
 ```
 
-Malaurio {data-height = 100, data-width = 1000}
+row {data-height = 100, data-width = 1000}
 ----------------------------------------------------------------------
 
 ```{r}
@@ -420,7 +420,7 @@ plotly::plot_ly(data = coronadf(),
 )
 ```
 
-Ontario
+row
 ---------------------------------------------------------------------
 
 Here we can note how the most used words per day reflects by the cases that start to show. 
@@ -489,7 +489,6 @@ renderPlot(
     geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
     theme_void()
 )
-
 ```
 
 As we can see, there's not many trigrams appearing, repetition is not a case in such speeches of AMLO.
@@ -503,12 +502,13 @@ row {data-height = 200}
 
 ![](./hightfidfwords.gif){ height=80% }
 
-On the left image, we can note the distribution of frequencies of words from the speeches for each of them. (without removing stop words). 
+The statistic tf-idf is intended to measure how important a word is to a document in a collection of documents. In this case, all the scripts. The formula for inverse document frequency is defined as: idf(term) = ln(ndocuments / ndocuments containing term)
 
-On the right one you can check the actual words (plot is basically the same than the left but aggregates each day).
+- On the left image, we can note the distribution of frequencies of words from the speeches for each of them. (without removing stop words). 
+- On the right one you can check the actual words (plot is basically the same than the left but aggregates each day).
 Both images are synced.
 
-aurio {data-height=100}
+row {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
@@ -531,20 +531,8 @@ On the lower ranks we can note how the speeches include a bit more than the usua
 Topic Modeling
 =========================================================================
 
-aurio {data-height=400, data-width = 400}
+row {data-height=400, data-width = 400}
 ----------------------------------------------------------------------
-
-Using Latent Dirichlet allocation (LDA) for fitting a topic model into the script set, we chose the size of k = 3 to find what would be the 3 topics. 
-
-- Came out to be pretty straight forward. As a mental exercise one could conceive what could be the topics that come for the words shown in the graph... Since they are generated in a pseudo-random order, topic number might change the actual topic it is addressing. 
-
-- The idea is that we have 3 main ones.
-
-Below there is a slider where you can explore which topics were covered by each script. Notice the trends and compare it to the coronavirus plot at the *1 Grams tokens* tab.
-
-- One seems to be talking about the health of the people, cases, and hospitals. HEALTH.
-- Another one seems to be talking about the government's addressing. LOGISTICS.
-- The last one seems to be talking about the people and money and government. ECONOMY.
 
 ```{r}
 renderPlotly(
@@ -558,7 +546,7 @@ top_terms %>%
 )
 ```
 
-aureo {data-height=100}
+row {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
@@ -573,7 +561,7 @@ choices = unique(as.character(chapters_gamma$document))
 
 ```
 
-### aurio
+### row
 ----------------------------------------------------------------------
 
 ```{r}
@@ -590,6 +578,18 @@ chaptersdf() %>%
 )
 ```
 
+Using Latent Dirichlet allocation (LDA) for fitting a topic model into the script set, we chose the size of k = 3 to find what would be the 3 topics. 
+
+- Came out to be pretty straight forward. As a mental exercise one could conceive what could be the topics that come for the words shown in the graph... Since they are generated in a pseudo-random order, topic number might change the actual topic it is addressing. 
+
+- The idea is that we have 3 main ones.
+
+Below there is a slider where you can explore which topics were covered by each script. Notice the trends and compare it to the coronavirus plot at the *1 Grams tokens* tab.
+
+- One seems to be talking about the health of the people, cases, and hospitals. HEALTH.
+- Another one seems to be talking about the government's addressing. LOGISTICS.
+- The last one seems to be talking about the people and money and government. ECONOMY.
+
 Conclusion
 =======================================================================
 
@@ -598,7 +598,7 @@ Results of the former hypothesis.
 - There must be a change of vocabulary and key words usage if we compare his speeches before COVID-19 and after it.
   - TRUE: you can note a pattern emerge from the 1 gram and bigram counts, the word frequency and topic modeling
 - In the peaking days of the virus is going to be the only topic that will be covered.
-  - *PARTIALLY* TRUE: surprisingly (or not so much)... public health words and health topic are mentioned more frequently the higher the graph is, but then there are days after this that they try to focus the speech on something completely different.
+  - *PARTIAL*: surprisingly (or not so much)... public health words and health topic are mentioned more frequently the higher the graph is, but then there are days after this that they try to focus the speech on something completely different.
 - There must be a strong correlation between the stock market and his speeches.
   - FALSE: we checked the date of 4/20 to see if there is some mentioning of *petróleo* or *gasolina* and seems to not show much. This indicates the speeches are not following the stock markets (at all?).
 
