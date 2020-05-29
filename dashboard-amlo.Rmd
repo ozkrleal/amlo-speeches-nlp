@@ -288,7 +288,7 @@ renderValueBox({
 # number of rows that have ever appeared through pkgStream.
 # Emit the download count
 renderValueBox({
-  valueBox(round(nrow(binded) / length(allscripts)), icon = "fa-download")
+  valueBox(round(nrow(binded) / length(allscripts)), icon = "fa-users")
 })
 ```
 
@@ -301,7 +301,7 @@ renderValueBox({
 
 # Emit the user count
 renderValueBox({
-  valueBox(value = 5.6, icon = "fa-users")
+  valueBox(value = 5.6, icon = "fa-download")
 })
 ```
 
@@ -326,7 +326,7 @@ For this we are using the scripts scraped from [this website](https://lopezobrad
 The script is on the repo.
 
 We will be attaching data of the virus that is available on [CRAN](https://cran.r-project.org/web/packages/coronavirus/).   
-We will be mentioning the date when the petrol dropped to see if the speech contains it
+We will be check the date when the petrol dropped (4/20) to see if the speech contains it.
 
 ### Diamonds
 ------------------------------------------------------------------------
