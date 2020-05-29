@@ -67,7 +67,8 @@ allscripts <- lapply(allscripts, function(i) i[-1,])
 
 #STOP WORDS
 custom_stop_words <- bind_rows(tibble(word = c('mil', 'andrés', 'manuel', 'lópez', 'obrador', 'presidente', 
-                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos', 'buenos', 'dias', NA)), 
+                                               'si', 'entonces', 'pregunta', 'interlocutora', 'va', 'vamos',
+                                               'méxico', 'buenos', 'dias', NA)), 
                                tibble(word = tm::stopwords("spanish")))
 
 #bigram transformation
@@ -273,7 +274,7 @@ freq_by_rank %>%
 script_words_no_stop <- script_words_no_stop %>%
   bind_tf_idf(word, date, n)
 
-script_words %>%
+script_words_no_stop %>%
   select(-total) %>%
   arrange(desc(tf_idf))
 
@@ -297,7 +298,7 @@ anim_save("hightfidfwords.gif", plot_hightf)
 ##TOPIC MODELLING
 #Casting of matrix
 dtm_one_words <- binded %>% cast_dtm(datenumeric, word, n)
-ap_lda <- LDA(dtm_one_words, k = 3, control = list(seed = 123)) 
+ap_lda <- LDA(dtm_one_words, k = 3, control = list(seed = 152)) 
 ap_topics <- tidy(ap_lda, matrix = "beta")
 
 #General topic modelling of his scripts

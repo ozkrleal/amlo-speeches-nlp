@@ -233,6 +233,33 @@ total_words_no_stop <- binded_no_stop %>%
   summarize(total = sum(n))
 
 script_words_no_stop <- left_join(binded_no_stop, total_words_no_stop)
+
+#zipfs law 
+freq_by_rank <- script_words_no_stop %>% 
+  group_by(datenumeric) %>% 
+  mutate(rank = row_number(), 
+         `term frequency` = n/total)
+
+
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+
+dtm_one_words <- binded %>% cast_dtm(date, word, n)
+ap_lda <- LDA(dtm_one_words, k = 3, control = list(seed = 152)) 
+ap_topics <- tidy(ap_lda, matrix = "beta")
+
+#General topic modelling of his scripts
+top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+#script by script topic modelling
+chapters_gamma <- tidy(ap_lda, matrix = "gamma")
 ```
 
 Exploration and hypothesis
@@ -470,11 +497,63 @@ As we can see, there's not many trigrams appearing, repetition is not a case in 
 TF - IDF
 =========================================================================
 
-row
+row {data-height = 200}
 ----------------------------------------------------------------------
-![](./nbytotal.gif)
+![](./nbytotal.gif){ height=80% }
+
+![](./hightfidfwords.gif){ height=80% }
+
+On the left image, we can note the distribution of frequencies of words from the speeches for each of them. (without removing stop words). 
+
+On the right one you can check the actual words (plot is basically the same than the left but aggregates each day).
+Both images are synced.
 
 aurio {data-height=100}
+----------------------------------------------------------------------
+
+```{r}
+renderPlotly(
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = date)) + 
+  geom_abline(intercept = -0.27, slope = -1.17, color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+)
+```
+
+As Zipf's law states, the frequency that a word appears is inversely proportional to its rank.
+Here we can note how the speeches throughout these months maintain a certain frequency, making them similar to each other.
+
+On the higher ranks we can note how there's a normal use of *rare* words.
+On the lower ranks we can note how the speeches include a bit more than the usual common words (comparing it to the linear fit).
+
+Topic Modeling
+=========================================================================
+
+aurio {data-height=400}
+----------------------------------------------------------------------
+
+Using Latent Dirichlet allocation (LDA) for fitting a topic model into the script set, we chose the size of k = 3 to find what would be the top 3 topics. Came out to be pretty straight forward. As a mental exercise one could conceive what could be the topics that come for the words shown in the graph...
+Below there is a slider where you can explore which topics were covered by each script. Notice the trend of topic 1 :)
+
+- First one seems to be talking about the health of the people, cases, and hospitals. HEALTH.
+- Second one seems to be talking about the government's addressing. LOGISTICS.
+- Third one seems to be talking about the people and money and government. ECONOMY.
+
+```{r}
+renderPlotly(
+top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
+)
+```
+
+aureo {data-height=100}
 ----------------------------------------------------------------------
 
 ```{r}
@@ -484,39 +563,24 @@ label = "Choose a day",
 grid = TRUE, 
 width = 1500,
 force_edges = TRUE,
-choices = unique(as.character(script_words_no_stop$date))
+choices = unique(as.character(chapters_gamma$document))
 )
-br()
+
 ```
 
 ### aurio
 ----------------------------------------------------------------------
 
 ```{r}
+chaptersdf <- reactive({
+  chaptersdf <- chapters_gamma %>% filter(as.character(document) == input$sliderdate3) %>%
+  mutate(title = reorder(document, gamma * topic))
+  chaptersdf
+})
 
-```
-
-Topic Modelling
-=========================================================================
-
-aurio {data-height=100}
-----------------------------------------------------------------------
-
-```{r}
-sliderTextInput(
-inputId = "sliderdate", 
-label = "Choose a day",
-grid = TRUE, 
-width = 1500,
-force_edges = TRUE,
-choices = unique(as.character(bindedtop25$date))
+renderPlotly(
+chaptersdf() %>%
+  ggplot(aes(factor(topic), gamma)) +
+  geom_boxplot()
 )
-br()
-```
-
-### aurio
-----------------------------------------------------------------------
-
-```{r}
-
 ```
