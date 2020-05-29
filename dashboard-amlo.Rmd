@@ -601,12 +601,17 @@ Results of the former hypothesis.
   - *PARTIALLY* TRUE: surprisingly (or not so much)... public health words and health topic are mentioned more frequently the higher the graph is, but then there are days after this that they try to focus the speech on something completely different.
 - There must be a strong correlation between the stock market and his speeches.
   - FALSE: we checked the date of 4/20 to see if there is some mentioning of *petróleo* or *gasolina* and seems to not show much. This indicates the speeches are not following the stock markets (at all?).
-  
-Feel free to use this dashboard as it pleases you. If you plan on contributing shoot a message, or find the contact on GitHub. Hope your findings reflect on your insights regarding Mexico.
 
 row {data-width = 1000}
 -----------------------------------------------------------------------
 
-![](./amlover2.jpg)
+![](./amlover2.jpg){ height=90%}
+
+![](./amlover3.jpg){ height=90%}
+
+row {data-height = 100}
+-----------------------------------------------------------------------
+
+Feel free to use this dashboard as it pleases you. If you plan on contributing shoot a message, or find the contact on GitHub. Hope your findings reflect on your insights regarding Mexico.
 
 
