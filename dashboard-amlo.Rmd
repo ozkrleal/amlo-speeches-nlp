@@ -121,20 +121,6 @@ my_theme <- theme_classic(base_family = "") +
   theme(plot.background = element_rect(fill = "gainsboro")) +
   theme(panel.background = element_rect(fill = "gainsboro"))
 
-df_daily <- coronavirus %>% 
-  group_by(date, type) %>%
-  filter(country == "Mexico" & date >= as.Date('2020-02-14') & date <= as.Date('2020-05-15')) %>%
-  summarise(total = sum(cases, na.rm = TRUE)) %>%
-  pivot_wider(names_from = type,
-                     values_from = total) %>%
-  arrange(date) %>%
-  ungroup() %>%
-  mutate(active =  confirmed - death - recovered) %>%
-  mutate(confirmed_cum = cumsum(confirmed),
-                death_cum = cumsum(death),
-                recovered_cum = cumsum(recovered),
-                active_cum = cumsum(active))
-
 #bigram transformation
 transform_bigrams <- function(){
   tidy_bigrams <- list()
@@ -336,6 +322,36 @@ We will be check the date when the petrol dropped (4/20) to see if the speech co
 1 Grams tokens
 =========================================================================
 
+Miker {.sidebar data-width=300}
+----------------------------------------------------------------------
+
+```{r}
+knobInput(
+  inputId = "topwordcount",
+  label = "Pick amount of words:",
+  value = 25,
+  min = 1,
+  max = 25,
+  displayPrevious = TRUE, 
+  lineCap = "round",
+  fgColor = "#428BCA",
+  inputColor = "#428BCA"
+)
+
+pickerInput(
+  inputId = "countries", 
+  label = "Filter for country in coronavirus plot:", 
+  selected = "Mexico",
+  choices = unique(coronavirus$country), 
+  options = list(
+    `actions-box` = TRUE, 
+    size = 10,
+    `selected-text-format` = "count > 3"
+  ), 
+  multiple = TRUE
+)
+```
+
 row {data-height=100}
 ----------------------------------------------------------------------
 
@@ -356,7 +372,7 @@ row {data-height=400}
 
 ```{r, fig.height=300}
 dataset <- reactive({
-  dataset <- ranked_by_date %>% filter(as.character(date) == (input$sliderdate)) 
+  dataset <- ranked_by_date %>% filter(as.character(date) == (input$sliderdate)) %>% head(input$topwordcount)
   dataset
 })
 
@@ -393,7 +409,21 @@ row {data-height = 100, data-width = 1000}
 
 ```{r}
 coronadf <- reactive({
-  coronadf <- df_daily %>% filter(date <= as.Date(paste0("2020/",as.character(input$sliderdate))) )
+  coronadf <- coronavirus %>% 
+  group_by(date, type) %>%
+  filter(country %in% input$countries & date >= as.Date('2020-02-14') & date <= as.Date('2020-05-15')) %>%
+  summarise(total = sum(cases, na.rm = TRUE)) %>%
+  pivot_wider(names_from = type,
+                     values_from = total) %>%
+  arrange(date) %>%
+  ungroup() %>%
+  mutate(active =  confirmed - death - recovered) %>%
+  mutate(confirmed_cum = cumsum(confirmed),
+                death_cum = cumsum(death),
+                recovered_cum = cumsum(recovered),
+                active_cum = cumsum(active))
+  
+  coronadf <- coronadf %>% filter(date <= as.Date(paste0("2020/",as.character(input$sliderdate))) )
   coronadf
 })
 
@@ -413,7 +443,7 @@ plotly::plot_ly(data = coronadf(),
                     name = "Death",
                     fillcolor = death_color) %>%
   plotly::layout(title = "",
-                 yaxis = list(title = "Cumulative Number of Cases in Mexico"),
+                 yaxis = list(title = "Cumulative Number of Cases"),
                  xaxis = list(title = "Date"),
                  legend = list(x = 0.1, y = 0.9),
                  hovermode = "compare")
@@ -498,9 +528,9 @@ TF - IDF
 
 row {data-height = 200}
 ----------------------------------------------------------------------
-![](./nbytotal.gif){ height=80% }
+![](./nbytotal.gif){ height=90% }
 
-![](./hightfidfwords.gif){ height=80% }
+![](./hightfidfwords.gif){ height=90% }
 
 The statistic tf-idf is intended to measure how important a word is to a document in a collection of documents. In this case, all the scripts. The formula for inverse document frequency is defined as: idf(term) = ln(ndocuments / ndocuments containing term)
 
