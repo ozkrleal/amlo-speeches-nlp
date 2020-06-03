@@ -193,12 +193,6 @@ for(i in names(bigrams)){
 }
 trigram_graph <- trigram_graph %>% bind_rows
 
-# supress non existent trigrams
-tags$style(type="text/css",
-  ".shiny-output-error { visibility: hidden; }",
-  ".shiny-output-error:before { visibility: hidden; }"
-)
-
 #tf-idf  term frequency
 binded_no_stop <- transform_bind_no_stop(allscripts)
 binded_no_stop$datenumeric <- gsub('/', '', binded_no_stop$date)
@@ -492,7 +486,8 @@ renderPlot(
     geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
     geom_node_point(color = "lightblue", size = 5) +
     geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-    theme_void()
+    theme_void() +
+    labs(caption = 'Bigrams')
 )
 ```
 
@@ -508,15 +503,19 @@ trigram_graphdf <- reactive({
 set.seed(2016)
 a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
   
-renderPlot(
+renderPlot({
+    validate(
+      need(nrow(trigram_graphdf()) > 0, "No data for this selection.")
+    )
     trigram_graphdf() %>%
     graph_from_data_frame() %>%
     ggraph(layout = "fr") +
     geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
     geom_node_point(color = "lightblue", size = 5) +
     geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-    theme_void()
-)
+    theme_void() +
+    labs(caption = 'Trigrams')
+})
 ```
 
 As we can see, there's not many trigrams appearing, repetition is not a case in such speeches of AMLO.
